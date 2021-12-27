@@ -5,7 +5,7 @@
 #include <readline/readline.h>
 #include <string.h>
 
-#define NUM_COMMAND 169
+#define NUM_COMMAND 171
 
 char *all_commands[] = 
    {
@@ -175,7 +175,7 @@ char *all_commands[] =
       "quit",
       "ls",
       "less",
-      "off","read_graph",
+      "off" , "read_graph" , "draw_graph", "write_graph"
    };
 
 int MyExit(Tcl_Interp *interp)
@@ -202,45 +202,135 @@ void init()
       Tcl_CreateObjCommand(interp, "off",(Tcl_ObjCmdProc *)sharp_f, "off", NULL);
 
       Tcl_CreateObjCommand(interp, "read_graph",(Tcl_ObjCmdProc *)read_graph, "read_graph", NULL);
-
+      Tcl_CreateObjCommand(interp, "draw_graph",(Tcl_ObjCmdProc *)draw_graph, "draw_graph", NULL);
+      Tcl_CreateObjCommand(interp, "write_graph",(Tcl_ObjCmdProc *)write_graph, "write_graph", NULL);
       //initialise history functions - Begin a session in which the history functions might be used.//
       using_history();
    }
 
 int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
-{
-   FILE* filePointer;
-   int bufferLength = 255;
-   char buffer[bufferLength];
-   char * ni;
-   char line_buffer[bufferLength] ;
+   {
+      FILE* filePointer ;
+      int bufferLength = 255;
+      char buffer[bufferLength];
+      char * ni;
+      char line_buffer[bufferLength];
+     
+      int n_i, n_j ;                         //ni -> nj in input file. //
+      int weight ;
 
-   filePointer = fopen(Tcl_GetString(objv[1]), "r");
+      filePointer = fopen(Tcl_GetString(objv[1]), "r");
 
-   //to create the array i have to find its size so i find the number of nodes //
-   //to be used in dynamic memory allocation. //
-   int max = 0 ;
-   while (fgets(buffer, bufferLength, filePointer)) 
-      {
-         strcpy(line_buffer,buffer);
-         ni = strtok(line_buffer," ");
-         if (atoi(ni+1) > max)
-            {
-               max =atoi(ni+1);
-            }
-         ni = strtok(NULL," ");
-         ni = strtok(NULL," ");
-         if (atoi(ni+1)  > max)
-            {
-               max = atoi(ni+1);
-            }
-         
-         printf("%s\n", buffer);
-      }
-   printf("%d\n", max);
-   fclose(filePointer);
-   return TCL_OK ;
-}
+      //to create the array i have to find its size so i find the number of nodes //
+      //to be used in dynamic memory allocation. //
+      max = 0 ;
+      while (fgets(buffer, bufferLength, filePointer)) 
+         {
+            strcpy(line_buffer,buffer);
+            ni = strtok(line_buffer," ");
+            if (atoi(ni+1) > max)
+               {
+                  max =atoi(ni+1);
+               }
+            ni = strtok(NULL," ");
+            ni = strtok(NULL," ");
+            if (atoi(ni+1)  > max)
+               {
+                  max = atoi(ni+1);
+               }
+            printf("%s\n", buffer);
+         }
+      
+      max++ ;
+      graph_array = (int**)malloc(max*sizeof(int*));
+      for (int i = 0 ; i < max ; i++)
+         {
+            *(graph_array+i) = (int*)malloc(max*sizeof(int));
+            for (int j = 0 ; j < max ; j++)
+               {
+                  graph_array[i][j] = -1;
+               }
+         }
+     
+      fseek(filePointer,0,SEEK_SET);
+ 
+      while (fgets(buffer, bufferLength, filePointer)) 
+         {
+            printf("%s\n",buffer);
+            strcpy(line_buffer,buffer);
+            ni = strtok(line_buffer," ");    
+            n_i = atoi(ni+1);
+            ni = strtok(NULL," ");
+            ni = strtok(NULL," ");
+            n_j = atoi(ni+1);
+            weight = atoi(strtok(NULL," ")); 
+            printf("n_i %d, n_j %d\n",n_i , n_j);
+            graph_array[n_i][n_j] = weight;
+         }
+      
+      fclose(filePointer);
+      return TCL_OK ;
+   }
+
+int draw_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+   {
+      printf("eftasa\n");
+       int rc = Tcl_Eval(interp, "package require Tk package require tcldot");
+      Tcl_Eval(interp, "set canv [canvas .canv]");
+      if (rc != TCL_OK)
+         {
+            Tcl_Obj *infoObj = Tcl_GetVar2Ex(interp, "errorInfo", NULL, TCL_GLOBAL_ONLY);
+            printf("%s\n",Tcl_GetString(infoObj));
+            return TCL_ERROR;
+         }
+      printf("eftasa\n");
+      rc = Tcl_Eval(interp, "pack $canv");
+      rc = Tcl_Eval(interp, "set graph [dotstring {digraph G{dir1 - > CSV}}]");
+      rc = Tcl_Eval(interp, "eval [$graph render $canv DOT]");
+      Tcl_Eval(interp, "scan [$graph queryattr bb] \"{%d %d %d %d}\" ulx uly lrx lry $canv configure -height [expr $lry + $uly + 5]p -width [expr $lrx + $ulx ");
+      return TCL_OK;
+   }
+int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+   {
+      FILE *fp;
+      char buffer[50] = {0}; 
+      fp = fopen (Tcl_GetString(objv[1]), "w");
+       fputs("digraph {\n", fp);
+      fputs("node [fillcolor = \"lightgray\", fontsize = 10]", fp);
+      for (int i = 0 ; i < max ; i++)
+         {
+            for (int j = 0 ; j < max ; j++)
+               {
+                  if (graph_array[i][j] != -1)
+                     {
+                        sprintf(buffer, "\t %d -> %d [label = \" %d \"];\n", i, j, graph_array[i][j]);
+                        fputs(buffer, fp);
+                     }
+               }
+         }
+      fputs("}", fp);
+      fclose(fp);
+
+   }
+
+int *longest_path()
+   {
+      int pred[max];
+      int dist[max];
+
+      for(int i = 0 ; i < max  i++)
+         {
+            dist[i] = 0;
+            //count predecessors of node-i. //
+            for(row = 0 ; row < max ; row++)
+               {
+                  if (graph_array[row][i] != -1)
+                     {
+                        pred[i]++;
+                     }  
+               }
+         }
+   }
 int cube_intersect(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
    {  
       char* result ;
@@ -760,8 +850,7 @@ int my_rlhandler( char* line)
       if (line==NULL)
          {
             // Ctrl-D will allow us to exit nicely
-               printf( "\nNULLBURGER\n");
-         
+            printf( "\nNULLBURGER\n");
          }
       else
          {
@@ -770,7 +859,6 @@ int my_rlhandler( char* line)
                {
                   add_history(line);
                }
-            
             //give to interpeter the command to execute //
             int rc = Tcl_Eval(interp, line);
             if (rc != TCL_OK)
@@ -780,7 +868,6 @@ int my_rlhandler( char* line)
                   return TCL_ERROR;
                }
             return TCL_OK;
-
          }
    }
 //Each time it’s called, command_generator returns a completion that matches the given text. When it can’t find any more options it returns NULL. //

@@ -3,6 +3,11 @@
 //history variables
 HIST_ENTRY **mylist;
 HISTORY_STATE *myhist; 
+
+int **graph_array;
+ int max = 0;                      //is the dimension of graph array //
+                                    //global variable to know all functions //
+                                    //the size of graph array. //
 //variables
 //array of strings for auto-complete functionality
 //
@@ -67,7 +72,10 @@ void show_history();
 //when the user passes enter, the following function is called to pass the command to the interpeter //
 
 int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+int draw_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
+//takes the graph stored by read_graph function and creates a dot file with thedata. //
+int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 int my_rlhandler(char* line) ;
 //the following function returns all matches of user input with thl commands and filenames, //
 //using the instruction_generator for sthe instructions.                                     //
