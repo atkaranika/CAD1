@@ -11,16 +11,21 @@ int **graph_array;
 //variables
 //array of strings for auto-complete functionality
 //
-extern char *all_commands[] ;
-
+extern char *all_commands[];
 
 typedef struct function
    {
       char* cube ;
-      struct function* next ;
-      struct function* prev ;
-   }cubes_list ;
+      struct function* next;
+      struct function* prev;
+   }cubes_list;
 
+typedef struct queue
+   {
+      int node;
+      struct queue* next;
+      struct queue* prev;
+   }queue_list;
 
 Tcl_Interp *interp ;
 //starts the tcl-interpeter and initializes the history variables. //
@@ -76,9 +81,12 @@ int draw_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 //takes the graph stored by read_graph function and creates a dot file with thedata. //
 int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+void longest_path(int **dist);
+void add_queue_list(queue_list** queue, int node);
 int my_rlhandler(char* line) ;
 //the following function returns all matches of user input with thl commands and filenames, //
-//using the instruction_generator for sthe instructions.                                     //
+//using the instruction_generator for sthe instructions.                                    //
 char **filename_command_completion(const char *, int, int);
 char *command_generator(const char *, int);
 

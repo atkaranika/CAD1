@@ -5,7 +5,7 @@
 #include <readline/readline.h>
 #include <string.h>
 
-#define NUM_COMMAND 171
+#define NUM_COMMAND 172
 
 char *all_commands[] = 
    {
@@ -175,7 +175,7 @@ char *all_commands[] =
       "quit",
       "ls",
       "less",
-      "off" , "read_graph" , "draw_graph", "write_graph"
+      "off" , "read_graph" , "draw_graph", "write_graph", "graph_critical_path",
    };
 
 int MyExit(Tcl_Interp *interp)
@@ -204,6 +204,7 @@ void init()
       Tcl_CreateObjCommand(interp, "read_graph",(Tcl_ObjCmdProc *)read_graph, "read_graph", NULL);
       Tcl_CreateObjCommand(interp, "draw_graph",(Tcl_ObjCmdProc *)draw_graph, "draw_graph", NULL);
       Tcl_CreateObjCommand(interp, "write_graph",(Tcl_ObjCmdProc *)write_graph, "write_graph", NULL);
+      Tcl_CreateObjCommand(interp, "graph_critical_path",(Tcl_ObjCmdProc *)graph_critical_path, "graph_critical_path", NULL);
       //initialise history functions - Begin a session in which the history functions might be used.//
       using_history();
    }
@@ -312,22 +313,102 @@ int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
       fclose(fp);
 
    }
+int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+   {
+      int dist[max];
+    
+      longest_path(&dist);
+      
+      
+      for(int i = 0 ; i < max ; i++)
+         {
+            printf("dist %d: %d\n", i, *(dist+i));
+         }
+      
+      return TCL_OK;
 
-int *longest_path()
+   }
+void longest_path(int **dist)
    {
       int pred[max];
-      int dist[max];
-
-      for(int i = 0 ; i < max  i++)
+      queue_list* queue;
+      queue_list* current;
+      
+       
+      queue = (queue_list*)malloc(sizeof(queue_list));
+      if (queue == NULL)
          {
-            dist[i] = 0;
+            printf("Error! Memory not allocated\n");
+            exit(0);
+         }
+      queue->prev = NULL;
+      queue->next = NULL;
+      //initialize the list and insert the input nodes in list. //
+      for(int i = 0 ; i < max ; i++)
+         {
+            *(dist+i) = 0;
+            pred[i] = 0;
             //count predecessors of node-i. //
-            for(row = 0 ; row < max ; row++)
+            for(int row = 0 ; row < max ; row++)
                {
                   if (graph_array[row][i] != -1)
                      {
                         pred[i]++;
                      }  
+               }
+            if (pred[i] == 0)
+               {
+                  add_queue_list(&queue, i);
+               }
+         }
+      //current will always be the head->next, because we always look at the first node of the list. //
+      current = queue->next;
+      while(current != NULL)
+         {
+            //for all sucessors of current. //
+            for(int col = 0 ; col < max ; col++)
+               {
+                  if (graph_array[current->node][col] != -1)
+                  {
+                     printf("new_dist: %d from: %d to: %d \n", *(dist+current->node)+graph_array[current->node][col], current->node, col);
+                     if (*(dist+current->node)+graph_array[current->node][col] > *(dist+col))
+                        {
+                           *(dist+col) = *(dist+current->node)+graph_array[current->node][col]; 
+                        }
+                        pred[col]--;
+                        if (pred[col] == 0)
+                           {
+                              add_queue_list(&queue, col);
+                           }
+                  }
+               }
+            //free current(first node). //
+            current->prev->next = current->next;
+            if(current->next!=NULL)
+               {
+                  current->next->prev = current->prev;
+               }
+            free(current);
+            current = queue->next;
+         }
+      return ; 
+   }
+
+void add_queue_list(queue_list** queue, int node)
+   {
+      queue_list* new_node;
+      new_node = (queue_list*)malloc(sizeof(queue_list));
+      new_node->node = node;
+      new_node->next = NULL; 
+      queue_list* current;
+      
+      for(current = *queue ; current != NULL ; current = current->next)
+         {
+            if (current->next == NULL)
+               {
+                  current->next = new_node ;
+                  new_node->prev = current ;
+                  break; 
                }
          }
    }
@@ -419,7 +500,7 @@ int sharp_f(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]
       cubes_list* sharp_result2;    //left_cube # (i-th in i iteration). //
       cubes_list* and_result ;      //final result. //
       cubes_list* current ;         //list iterator. //
-      cubes_list *and_result_temp;  //provision result of and (step-3)                       //
+      cubes_list* and_result_temp;  //provision result of and (step-3)                       //
                                     //because in each iteration we will have a               //
                                     //new result of the and operation, the "and_list"must    //
                                     //be emty, and because we need the result for the next   //
@@ -450,7 +531,7 @@ int sharp_f(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]
          }
      
       sharp_result1 = (cubes_list*)malloc(sizeof(cubes_list));
-      sharp_result1->prev = NULL ;
+      sharp_result1->prev = NULL;
       sharp_result1->next = NULL;
       
       sharp_result2 = (cubes_list*)malloc(sizeof(cubes_list));
