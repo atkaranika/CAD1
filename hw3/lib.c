@@ -315,16 +315,101 @@ int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
    }
 int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
    {
-      int dist[max];
-    
+      int *dist;
+      int max_dist = 0;
+      int *critical_path;
+      int slack[max];
+      int pred[max];
+      int j;                 //iterator for crtitcal_path. //
+      queue_list *queue;
+      queue_list *current;
+      
+     
+
+      dist = (int*)malloc(max*sizeof(int));
       longest_path(&dist);
-      
-      
       for(int i = 0 ; i < max ; i++)
          {
-            printf("dist %d: %d\n", i, *(dist+i));
+            printf("dist %d: %d\n", i, dist[i]);
+            if (dist[i] > max_dist)
+               {
+                  max_dist = dist[i];
+               }
          }
-      
+
+      queue = (queue_list*)malloc(sizeof(queue_list));
+      if (queue == NULL)
+         {
+            printf("Error! Memory not allocated\n");
+            exit(0);
+         }
+      queue->prev = NULL;
+      queue->next = NULL; 
+      queue->node = -1;  
+
+      //add the nodes with max distance to the quque and critical_path. // 
+      critical_path = (int*)malloc(sizeof(int));
+      j = 0;
+      for(int i = 0 ; i < max ; i++)
+         {
+            if (dist[i] == max_dist)
+               {
+                  slack[i] = 0;
+                  add_queue_list(&queue, i);
+                  if (j == 0)
+                     {
+                        critical_path[j] = i;
+                     }
+                  else 
+                     {
+                        realloc(critical_path,sizeof(int));
+                        critical_path[j] = i;
+                     }
+                  j++;
+               }
+            else
+               {
+                  slack[i] = max_dist;
+               }
+         }
+
+      current = queue->next;
+      while(current != NULL)
+         {
+            //for all predecessors of current. //
+            for(int row = 0 ; row < max ; row++)
+               {
+                  if (graph_array[row][current->node] != -1)
+                     {
+                        slack[row] = slack[current->node] + (dist[current->node] -  (dist[row] + graph_array[row][current->node]));
+                        if (slack[row] == 0)
+                           {
+                              add_queue_list(&queue, row);
+                              realloc(critical_path,sizeof(int));
+                              critical_path[j] = row;
+                              j++;
+                              break;
+                           }
+                     }  
+               }
+
+            //free current(first node). //
+            current->prev->next = current->next;
+            if(current->next!=NULL)
+               {
+                  current->next->prev = current->prev;
+               }
+            free(current);
+            current = queue->next;
+         }
+
+      //print critical_path. //
+      for(int i = 0 ; i < j ; i++)
+         {
+            printf("%d", critical_path[j]);
+         }
+      printf("\n");
+      //find which nodes have th maximum distance, and add them to the queue. //
       return TCL_OK;
 
    }
@@ -333,6 +418,7 @@ void longest_path(int **dist)
       int pred[max];
       queue_list* queue;
       queue_list* current;
+      int* local_dist = *dist;
       
        
       queue = (queue_list*)malloc(sizeof(queue_list));
@@ -346,7 +432,7 @@ void longest_path(int **dist)
       //initialize the list and insert the input nodes in list. //
       for(int i = 0 ; i < max ; i++)
          {
-            *(dist+i) = 0;
+            local_dist[i] = 0;
             pred[i] = 0;
             //count predecessors of node-i. //
             for(int row = 0 ; row < max ; row++)
@@ -370,10 +456,10 @@ void longest_path(int **dist)
                {
                   if (graph_array[current->node][col] != -1)
                   {
-                     printf("new_dist: %d from: %d to: %d \n", *(dist+current->node)+graph_array[current->node][col], current->node, col);
-                     if (*(dist+current->node)+graph_array[current->node][col] > *(dist+col))
+                     printf("new_dist: %d, old_dist: %d,  from: %d to: %d \n", local_dist[current->node]+graph_array[current->node][col],local_dist[col] ,current->node, col);
+                     if (local_dist[current->node]+graph_array[current->node][col] > local_dist[col])
                         {
-                           *(dist+col) = *(dist+current->node)+graph_array[current->node][col]; 
+                           local_dist[col] = local_dist[current->node]+graph_array[current->node][col];
                         }
                         pred[col]--;
                         if (pred[col] == 0)
