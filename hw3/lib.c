@@ -5,7 +5,7 @@
 #include <readline/readline.h>
 #include <string.h>
 
-#define NUM_COMMAND 168
+#define NUM_COMMAND 172
 
 char *all_commands[] = 
    {
@@ -175,7 +175,7 @@ char *all_commands[] =
       "quit",
       "ls",
       "less",
-      "off",
+      "off" , "read_graph" , "draw_graph", "write_graph", "graph_critical_path",
    };
 
 int MyExit(Tcl_Interp *interp)
@@ -200,10 +200,304 @@ void init()
       Tcl_CreateObjCommand(interp, "cover_f",(Tcl_ObjCmdProc *)sharp, NULL, NULL);
       Tcl_CreateObjCommand(interp, "sharp_f",(Tcl_ObjCmdProc *)sharp_f, NULL, NULL);
       Tcl_CreateObjCommand(interp, "off",(Tcl_ObjCmdProc *)sharp_f, "off", NULL);
+
+      Tcl_CreateObjCommand(interp, "read_graph",(Tcl_ObjCmdProc *)read_graph, "read_graph", NULL);
+      Tcl_CreateObjCommand(interp, "draw_graph",(Tcl_ObjCmdProc *)draw_graph, "draw_graph", NULL);
+      Tcl_CreateObjCommand(interp, "write_graph",(Tcl_ObjCmdProc *)write_graph, "write_graph", NULL);
+      Tcl_CreateObjCommand(interp, "graph_critical_path",(Tcl_ObjCmdProc *)graph_critical_path, "graph_critical_path", NULL);
       //initialise history functions - Begin a session in which the history functions might be used.//
       using_history();
    }
 
+int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+   {
+      FILE* filePointer ;
+      int bufferLength = 255;
+      char buffer[bufferLength];
+      char * ni;
+      char line_buffer[bufferLength];
+     
+      int n_i, n_j ;                         //ni -> nj in input file. //
+      int weight ;
+
+      filePointer = fopen(Tcl_GetString(objv[1]), "r");
+
+      //to create the array i have to find its size so i find the number of nodes //
+      //to be used in dynamic memory allocation. //
+      max = 0 ;
+      while (fgets(buffer, bufferLength, filePointer)) 
+         {
+            strcpy(line_buffer,buffer);
+            ni = strtok(line_buffer," ");
+            if (atoi(ni+1) > max)
+               {
+                  max =atoi(ni+1);
+               }
+            ni = strtok(NULL," ");
+            ni = strtok(NULL," ");
+            if (atoi(ni+1)  > max)
+               {
+                  max = atoi(ni+1);
+               }
+            printf("%s\n", buffer);
+         }
+      
+      max++ ;
+      graph_array = (int**)malloc(max*sizeof(int*));
+      for (int i = 0 ; i < max ; i++)
+         {
+            *(graph_array+i) = (int*)malloc(max*sizeof(int));
+            for (int j = 0 ; j < max ; j++)
+               {
+                  graph_array[i][j] = -1;
+               }
+         }
+     
+      fseek(filePointer,0,SEEK_SET);
+ 
+      while (fgets(buffer, bufferLength, filePointer)) 
+         {
+            printf("%s\n",buffer);
+            strcpy(line_buffer,buffer);
+            ni = strtok(line_buffer," ");    
+            n_i = atoi(ni+1);
+            ni = strtok(NULL," ");
+            ni = strtok(NULL," ");
+            n_j = atoi(ni+1);
+            weight = atoi(strtok(NULL," ")); 
+            printf("n_i %d, n_j %d\n",n_i , n_j);
+            graph_array[n_i][n_j] = weight;
+         }
+      
+      fclose(filePointer);
+      return TCL_OK ;
+   }
+
+int draw_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+   {
+      printf("eftasa\n");
+       int rc = Tcl_Eval(interp, "package require Tk package require tcldot");
+      Tcl_Eval(interp, "set canv [canvas .canv]");
+      if (rc != TCL_OK)
+         {
+            Tcl_Obj *infoObj = Tcl_GetVar2Ex(interp, "errorInfo", NULL, TCL_GLOBAL_ONLY);
+            printf("%s\n",Tcl_GetString(infoObj));
+            return TCL_ERROR;
+         }
+      printf("eftasa\n");
+      rc = Tcl_Eval(interp, "pack $canv");
+      rc = Tcl_Eval(interp, "set graph [dotstring {digraph G{dir1 - > CSV}}]");
+      rc = Tcl_Eval(interp, "eval [$graph render $canv DOT]");
+      Tcl_Eval(interp, "scan [$graph queryattr bb] \"{%d %d %d %d}\" ulx uly lrx lry $canv configure -height [expr $lry + $uly + 5]p -width [expr $lrx + $ulx ");
+      return TCL_OK;
+   }
+int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+   {
+      FILE *fp;
+      char buffer[50] = {0}; 
+      fp = fopen (Tcl_GetString(objv[1]), "w");
+       fputs("digraph {\n", fp);
+      fputs("node [fillcolor = \"lightgray\", fontsize = 10]", fp);
+      for (int i = 0 ; i < max ; i++)
+         {
+            for (int j = 0 ; j < max ; j++)
+               {
+                  if (graph_array[i][j] != -1)
+                     {
+                        sprintf(buffer, "\t %d -> %d [label = \" %d \"];\n", i, j, graph_array[i][j]);
+                        fputs(buffer, fp);
+                     }
+               }
+         }
+      fputs("}", fp);
+      fclose(fp);
+
+   }
+int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+   {
+      int *dist;
+      int max_dist = 0;
+      int *critical_path;
+      int slack[max];
+      int pred[max];
+      int j;                 //iterator for crtitcal_path. //
+      queue_list *queue;
+      queue_list *current;
+      
+     
+
+      dist = (int*)malloc(max*sizeof(int));
+      longest_path(&dist);
+      for(int i = 0 ; i < max ; i++)
+         {
+            printf("dist %d: %d\n", i, dist[i]);
+            if (dist[i] > max_dist)
+               {
+                  max_dist = dist[i];
+               }
+         }
+
+      queue = (queue_list*)malloc(sizeof(queue_list));
+      if (queue == NULL)
+         {
+            printf("Error! Memory not allocated\n");
+            exit(0);
+         }
+      queue->prev = NULL;
+      queue->next = NULL; 
+      queue->node = -1;  
+
+      //add the nodes with max distance to the quque and critical_path. // 
+      critical_path = (int*)malloc(sizeof(int));
+      j = 0;
+      for(int i = 0 ; i < max ; i++)
+         {
+            if (dist[i] == max_dist)
+               {
+                  slack[i] = 0;
+                  add_queue_list(&queue, i);
+                  if (j == 0)
+                     {
+                        critical_path[j] = i;
+                     }
+                  else 
+                     {
+                        realloc(critical_path,sizeof(int));
+                        critical_path[j] = i;
+                     }
+                  j++;
+               }
+            else
+               {
+                  slack[i] = max_dist;
+               }
+         }
+
+      current = queue->next;
+      while(current != NULL)
+         {
+            //for all predecessors of current. //
+            for(int row = 0 ; row < max ; row++)
+               {
+                  if (graph_array[row][current->node] != -1)
+                     {
+                        slack[row] = slack[current->node] + (dist[current->node] -  (dist[row] + graph_array[row][current->node]));
+                        if (slack[row] == 0)
+                           {
+                              add_queue_list(&queue, row);
+                              realloc(critical_path,sizeof(int));
+                              critical_path[j] = row;
+                              j++;
+                              break;
+                           }
+                     }  
+               }
+
+            //free current(first node). //
+            current->prev->next = current->next;
+            if(current->next!=NULL)
+               {
+                  current->next->prev = current->prev;
+               }
+            free(current);
+            current = queue->next;
+         }
+
+      //print critical_path. //
+      for(int i = 0 ; i < j ; i++)
+         {
+            printf("%d", critical_path[j]);
+         }
+      printf("\n");
+      //find which nodes have th maximum distance, and add them to the queue. //
+      return TCL_OK;
+
+   }
+void longest_path(int **dist)
+   {
+      int pred[max];
+      queue_list* queue;
+      queue_list* current;
+      int* local_dist = *dist;
+      
+       
+      queue = (queue_list*)malloc(sizeof(queue_list));
+      if (queue == NULL)
+         {
+            printf("Error! Memory not allocated\n");
+            exit(0);
+         }
+      queue->prev = NULL;
+      queue->next = NULL;
+      //initialize the list and insert the input nodes in list. //
+      for(int i = 0 ; i < max ; i++)
+         {
+            local_dist[i] = 0;
+            pred[i] = 0;
+            //count predecessors of node-i. //
+            for(int row = 0 ; row < max ; row++)
+               {
+                  if (graph_array[row][i] != -1)
+                     {
+                        pred[i]++;
+                     }  
+               }
+            if (pred[i] == 0)
+               {
+                  add_queue_list(&queue, i);
+               }
+         }
+      //current will always be the head->next, because we always look at the first node of the list. //
+      current = queue->next;
+      while(current != NULL)
+         {
+            //for all sucessors of current. //
+            for(int col = 0 ; col < max ; col++)
+               {
+                  if (graph_array[current->node][col] != -1)
+                  {
+                     printf("new_dist: %d, old_dist: %d,  from: %d to: %d \n", local_dist[current->node]+graph_array[current->node][col],local_dist[col] ,current->node, col);
+                     if (local_dist[current->node]+graph_array[current->node][col] > local_dist[col])
+                        {
+                           local_dist[col] = local_dist[current->node]+graph_array[current->node][col];
+                        }
+                        pred[col]--;
+                        if (pred[col] == 0)
+                           {
+                              add_queue_list(&queue, col);
+                           }
+                  }
+               }
+            //free current(first node). //
+            current->prev->next = current->next;
+            if(current->next!=NULL)
+               {
+                  current->next->prev = current->prev;
+               }
+            free(current);
+            current = queue->next;
+         }
+      return ; 
+   }
+
+void add_queue_list(queue_list** queue, int node)
+   {
+      queue_list* new_node;
+      new_node = (queue_list*)malloc(sizeof(queue_list));
+      new_node->node = node;
+      new_node->next = NULL; 
+      queue_list* current;
+      
+      for(current = *queue ; current != NULL ; current = current->next)
+         {
+            if (current->next == NULL)
+               {
+                  current->next = new_node ;
+                  new_node->prev = current ;
+                  break; 
+               }
+         }
+   }
 int cube_intersect(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
    {  
       char* result ;
@@ -292,7 +586,7 @@ int sharp_f(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]
       cubes_list* sharp_result2;    //left_cube # (i-th in i iteration). //
       cubes_list* and_result ;      //final result. //
       cubes_list* current ;         //list iterator. //
-      cubes_list *and_result_temp;  //provision result of and (step-3)                       //
+      cubes_list* and_result_temp;  //provision result of and (step-3)                       //
                                     //because in each iteration we will have a               //
                                     //new result of the and operation, the "and_list"must    //
                                     //be emty, and because we need the result for the next   //
@@ -323,7 +617,7 @@ int sharp_f(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]
          }
      
       sharp_result1 = (cubes_list*)malloc(sizeof(cubes_list));
-      sharp_result1->prev = NULL ;
+      sharp_result1->prev = NULL;
       sharp_result1->next = NULL;
       
       sharp_result2 = (cubes_list*)malloc(sizeof(cubes_list));
@@ -723,8 +1017,7 @@ int my_rlhandler( char* line)
       if (line==NULL)
          {
             // Ctrl-D will allow us to exit nicely
-               printf( "\nNULLBURGER\n");
-         
+            printf( "\nNULLBURGER\n");
          }
       else
          {
@@ -733,9 +1026,8 @@ int my_rlhandler( char* line)
                {
                   add_history(line);
                }
-            
             //give to interpeter the command to execute //
-            int rc = Tcl_Eval( interp, line);
+            int rc = Tcl_Eval(interp, line);
             if (rc != TCL_OK)
                {
                   Tcl_Obj *infoObj = Tcl_GetVar2Ex(interp, "errorInfo", NULL, TCL_GLOBAL_ONLY);
@@ -743,7 +1035,6 @@ int my_rlhandler( char* line)
                   return TCL_ERROR;
                }
             return TCL_OK;
-
          }
    }
 //Each time it’s called, command_generator returns a completion that matches the given text. When it can’t find any more options it returns NULL. //
