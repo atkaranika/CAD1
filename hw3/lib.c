@@ -221,7 +221,11 @@ int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
       int weight ;
 
       filePointer = fopen(Tcl_GetString(objv[1]), "r");
-
+      if (filePointer == NULL)
+         {
+            printf("Error! Unable to open file. Try again\n");
+            return TCL_OK;
+         }
       //to create the array i have to find its size so i find the number of nodes //
       //to be used in dynamic memory allocation. //
       max = 0 ;
@@ -239,7 +243,6 @@ int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
                {
                   max = atoi(ni+1);
                }
-            printf("%s\n", buffer);
          }
       
       max++ ;
@@ -257,7 +260,6 @@ int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
  
       while (fgets(buffer, bufferLength, filePointer)) 
          {
-            printf("%s\n",buffer);
             strcpy(line_buffer,buffer);
             ni = strtok(line_buffer," ");    
             n_i = atoi(ni+1);
@@ -265,7 +267,6 @@ int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             ni = strtok(NULL," ");
             n_j = atoi(ni+1);
             weight = atoi(strtok(NULL," ")); 
-            printf("n_i %d, n_j %d\n",n_i , n_j);
             graph_array[n_i][n_j] = weight;
          }
       
@@ -275,28 +276,20 @@ int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 int draw_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
    {
-      printf("eftasa\n");
-       int rc = Tcl_Eval(interp, "package require Tk package require tcldot");
-      Tcl_Eval(interp, "set canv [canvas .canv]");
-      if (rc != TCL_OK)
-         {
-            Tcl_Obj *infoObj = Tcl_GetVar2Ex(interp, "errorInfo", NULL, TCL_GLOBAL_ONLY);
-            printf("%s\n",Tcl_GetString(infoObj));
-            return TCL_ERROR;
-         }
-      printf("eftasa\n");
-      rc = Tcl_Eval(interp, "pack $canv");
-      rc = Tcl_Eval(interp, "set graph [dotstring {digraph G{dir1 - > CSV}}]");
-      rc = Tcl_Eval(interp, "eval [$graph render $canv DOT]");
-      Tcl_Eval(interp, "scan [$graph queryattr bb] \"{%d %d %d %d}\" ulx uly lrx lry $canv configure -height [expr $lry + $uly + 5]p -width [expr $lrx + $ulx ");
-      return TCL_OK;
-   }
-int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
-   {
       FILE *fp;
       char buffer[50] = {0}; 
-      fp = fopen (Tcl_GetString(objv[1]), "w");
-       fputs("digraph {\n", fp);
+      fp = fopen(Tcl_GetString(objv[1]), "w");
+
+      if (graph_array == NULL)
+         {
+            printf("you have not read any graph yet\n");
+            return TCL_OK;
+         }
+      if (fp == NULL)
+         {
+            printf("Unable to open file. Try again!\n");
+         }
+      fputs("digraph {\n", fp);
       fputs("node [fillcolor = \"lightgray\", fontsize = 10]", fp);
       for (int i = 0 ; i < max ; i++)
          {
@@ -311,7 +304,40 @@ int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
          }
       fputs("}", fp);
       fclose(fp);
-
+      system("xdg-open outpout.png");
+      return TCL_OK;
+   }
+int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+   {
+      FILE *fp;
+      char buffer[50] = {0}; 
+      fp = fopen(Tcl_GetString(objv[1]), "w");
+      if (graph_array == NULL)
+         {
+            printf("you have not read any graph yet\n");
+            return TCL_OK;
+         }
+      if (fp == NULL)
+         {
+            printf("Unable to open file. Try again!\n");
+            return TCL_OK;
+         }
+      fputs("digraph {\n", fp);
+      fputs("node [fillcolor = \"lightgray\", fontsize = 10]", fp);
+      for (int i = 0 ; i < max ; i++)
+         {
+            for (int j = 0 ; j < max ; j++)
+               {
+                  if (graph_array[i][j] != -1)
+                     {
+                        sprintf(buffer, "\t %d -> %d [label = \" %d \"];\n", i, j, graph_array[i][j]);
+                        fputs(buffer, fp);
+                     }
+               }
+         }
+      fputs("}", fp);
+      fclose(fp);
+      return TCL_OK;
    }
 int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
    {
@@ -321,21 +347,12 @@ int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *
       int slack[max];
       int pred[max];
       int j;                 //iterator for crtitcal_path. //
+      int length_critical_path = 0;
       queue_list *queue;
       queue_list *current;
-      
-     
-
+   
       dist = (int*)malloc(max*sizeof(int));
-      longest_path(&dist);
-      for(int i = 0 ; i < max ; i++)
-         {
-            printf("dist %d: %d\n", i, dist[i]);
-            if (dist[i] > max_dist)
-               {
-                  max_dist = dist[i];
-               }
-         }
+      identify_longest_path(&dist);
 
       queue = (queue_list*)malloc(sizeof(queue_list));
       if (queue == NULL)
@@ -362,7 +379,10 @@ int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *
                      }
                   else 
                      {
-                        realloc(critical_path,sizeof(int));
+                        if (realloc(critical_path,sizeof(int)) == NULL)
+                           { 
+                              perror("realloc fails!");
+                           }
                         critical_path[j] = i;
                      }
                   j++;
@@ -382,10 +402,15 @@ int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *
                   if (graph_array[row][current->node] != -1)
                      {
                         slack[row] = slack[current->node] + (dist[current->node] -  (dist[row] + graph_array[row][current->node]));
+                       
                         if (slack[row] == 0)
                            {
                               add_queue_list(&queue, row);
-                              realloc(critical_path,sizeof(int));
+                              if (realloc(critical_path,sizeof(int)) == NULL)
+                                 { 
+                                    perror("realloc fails!");
+                                 }
+                              length_critical_path+= graph_array[row][current->node];
                               critical_path[j] = row;
                               j++;
                               break;
@@ -403,17 +428,26 @@ int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *
             current = queue->next;
          }
 
+      printf("Critical path\n");
       //print critical_path. //
-      for(int i = 0 ; i < j ; i++)
+      for(int i = j-1 ; i > 0 ; i--)
          {
-            printf("%d", critical_path[j]);
+            printf("%d  ", critical_path[i]);
          }
       printf("\n");
+      printf("Length of Critical path: %d\n", length_critical_path);
+
+      printf("Slack of all nodes\n");
+      //print critical_path. //
+      for(int i = 0; i < max ; i++)
+         {
+            printf("slack %d: %d\n", i, slack[i]);
+         }
+
       //find which nodes have th maximum distance, and add them to the queue. //
       return TCL_OK;
-
    }
-void longest_path(int **dist)
+void identify_longest_path(int **dist)
    {
       int pred[max];
       queue_list* queue;
@@ -455,18 +489,17 @@ void longest_path(int **dist)
             for(int col = 0 ; col < max ; col++)
                {
                   if (graph_array[current->node][col] != -1)
-                  {
-                     printf("new_dist: %d, old_dist: %d,  from: %d to: %d \n", local_dist[current->node]+graph_array[current->node][col],local_dist[col] ,current->node, col);
-                     if (local_dist[current->node]+graph_array[current->node][col] > local_dist[col])
-                        {
-                           local_dist[col] = local_dist[current->node]+graph_array[current->node][col];
-                        }
-                        pred[col]--;
-                        if (pred[col] == 0)
+                     {
+                        if (local_dist[current->node]+graph_array[current->node][col] > local_dist[col])
                            {
-                              add_queue_list(&queue, col);
+                              local_dist[col] = local_dist[current->node]+graph_array[current->node][col];
                            }
-                  }
+                           pred[col]--;
+                           if (pred[col] == 0)
+                              {
+                                 add_queue_list(&queue, col);
+                              }
+                     }
                }
             //free current(first node). //
             current->prev->next = current->next;
@@ -498,6 +531,11 @@ void add_queue_list(queue_list** queue, int node)
                }
          }
    }
+//1.input format for cube_intersect, supercube, distance, cube_cover, sharp //
+//2.     <command> <cube1> <cube2>                                          //
+//3.         |       |        |                                             //
+//4.eg.  supercube 101010   010101                                          //
+
 int cube_intersect(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
    {  
       char* result ;
@@ -533,9 +571,9 @@ int distance(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[
          {  
             return TCL_OK;
          }
-      //intersect is the result of intersect operation. If 2 consecutive zeros are found  //
-      //then the distance counter(dinstance) increases by 1. The counter variable becomes //
-      //2 only when the zeros are in appropriate positions.                               //
+      //1.intersect is the result of intersect operation. If 2 consecutive zeros are found  //
+      //2.then the distance counter(dinstance) increases by 1. The counter variable becomes //
+      //3.2 only when the zeros are in appropriate positions.                               //
       intersect = my_bitwise_and_or(Tcl_GetString(objv[1]), Tcl_GetString(objv[2]), "and");
       for(int i = 0 ; i < strlen(intersect) ;  i++)
          {  
@@ -580,24 +618,32 @@ int cube_cover(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 //5. and operation between the results from 4. and 5.                      //
 //repeat the process (add-sharp) until we reach the last cube of the list. //
 
+//1.sharp_f cube1 {cube2 cube3 cube4.....cube_n}. //
+//2.sharp_result1 = cube1 sharp cube2.            //
+//3.sharp_result2 = cube1 sharp cube3.            //
+//4.and_result = sharp_result1 and sharp_result2. //
+//5.sharp_result2 = cube1 sharp cube4.            //
+//6.and_result = and_result and sharp_result2     //
+
+//absorb operation is included in and operation.  //
 int sharp_f(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
    {
       cubes_list* sharp_result1 ;   //left_cube # first_cube. //
       cubes_list* sharp_result2;    //left_cube # (i-th in i iteration). //
       cubes_list* and_result ;      //final result. //
       cubes_list* current ;         //list iterator. //
-      cubes_list* and_result_temp;  //provision result of and (step-3)                       //
-                                    //because in each iteration we will have a               //
-                                    //new result of the and operation, the "and_list"must    //
-                                    //be emty, and because we need the result for the next   //
-                                    //iteration we keep it in the "and_result_temp".         //
+      cubes_list* and_result_temp;  //1.provision result of and (step-3)                       //
+                                    //2.because in each iteration we will have a               //
+                                    //3.new result of the and operation, the "and_list"must    //
+                                    //4.be emty, and because we need the result for the next   //
+                                    //5.iteration we keep it in the "and_result_temp".         //
 
       char* input ;                 //in the objv[2] position all the contents are inserted. //
 
       char* objv1 ;
       char* objv2 ;
-      //(left cube) # f : if the first argument is "off" then the left cube for the sharp operation //
-      //will be 11 11 .. and the f will be the second argument.                                     //
+      //1.(left cube) # f : if the first argument is "off" then the left cube for the sharp operation //
+      //2.will be 11 11 .. and the f will be the second argument.                                     //
       if (line == "off")         
          {
             objv2 = Tcl_GetString(objv[1]) ;
@@ -662,6 +708,7 @@ int sharp_f(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]
                      {
                         break ;
                      }
+                  //delete all nodes except for the first one. //
                   my_free(&sharp_result2);
                   //sharp operation bretween left and i-th cube of the list //  
                   my_sharp(objv1, input, &sharp_result2);
@@ -762,20 +809,52 @@ int sharp(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
       return TCL_OK;
    }
 
+
+void absorb(cubes_list** sharp_result)
+   {
+      cubes_list* current;
+      cubes_list* current_in;
+      cubes_list* current_next ; //free(current_in) and in the next iteration i want to get current->next. //
+         
+      for(current = (*sharp_result)->next ; current != NULL ; current = current->next)
+         {
+            for(current_in = (*sharp_result)->next ; current_in != NULL ; current_in = current_next)
+               {
+                  if (current != current_in)
+                     {
+                        if (cover(current->cube, current_in->cube) || current->cube == current_in->cube)
+                           {
+                              current_in->prev->next = current_in->next ;
+                              if (current_in->next != NULL)
+                              {
+                                  current_in->next->prev = current_in->prev ;
+                              }
+                              current_next = current_in->next ;
+                              free(current_in->cube);
+                              free(current_in);
+                           }
+                           else current_next = current_in->next;
+                     }
+                  else current_next = current_in->next;
+               }
+         }
+   }
+
+
 void my_sharp(char* str1, char* str2, cubes_list** sharp_result)
    {
-      char* row_of_result ;      //in each iteration row_of_result is found and //
-                                 //if it is valid entered in the array.         //
-      char substring_str1[3];    //two digits of str1 and str2 bettween         //
-      char substring_str2[3];    //whitch is executed binary and                //
+      char* row_of_result ;      //1.in each iteration row_of_result is found and //
+                                 //2.if it is valid entered in the array.         //
+      char substring_str1[3];    //3.two digits of str1 and str2 bettween         //
+      char substring_str2[3];    //4.whitch is executed binary and                //
       char* and_result ;
-      int invalid  = 0;          //is set 1 if a cube is invalid //
-                                 //(contains 00)                 //
+      int invalid  = 0;          //1.is set 1 if a cube is invalid //
+                                 //2.(contains 00)                 //
       int row_counter = 0 ; 
       row_of_result = (char*)malloc(strlen(str1)*sizeof(char)+1);
       
-      //the rows of the final array(sharp result) will be the maximum //
-      //cube digit number/2 //
+      //1.the rows of the final array(sharp result) will be the maximum //
+      //2.cube digit number/2                                           //
       for(int i = 0 ; i < strlen(str1)/2 ; i+=1)
          {  
             invalid = 0 ;
@@ -813,14 +892,14 @@ void my_sharp(char* str1, char* str2, cubes_list** sharp_result)
                   free(and_result);
                   continue ;
                }
-            //the result "and" is inserted in the i-th position of sting //
-            //where i is the current row of the result which is calculated.//
+            //1.the result "and" is inserted in the i-th position of sting   //
+            //2.where i is the current row of the result which is calculated.//
             row_of_result[2*i] = and_result[0];
             row_of_result[2*i+1] = and_result[1];
             add_list(sharp_result, row_of_result);
             free(and_result);
          }
-      
+      absorb(sharp_result);
       free(row_of_result);
    }
 
@@ -846,36 +925,10 @@ void add_list(cubes_list** sharp_result, char* cube)
          }
    }
 
-void absorb(cubes_list** sharp_result)
-   {
-      cubes_list* current;
-      cubes_list* current_in;
-      cubes_list* current_next ; //free(current_in) and in the next iteration i want to get current->next. //
-         
-      for(current = (*sharp_result)->next ; current != NULL ; current = current->next)
-         {
-            for(current_in = (*sharp_result)->next ; current_in != NULL ; current_in = current_next)
-               {
-                  if (current != current_in)
-                     {
-                        if (cover(current->cube, current_in->cube) || current->cube == current_in->cube)
-                           {
-                              current_in->prev->next = current_in->next ;
-                              if (current_in->next != NULL)
-                              {
-                                  current_in->next->prev = current_in->prev ;
-                              }
-                              current_next = current_in->next ;
-                              free(current_in->cube);
-                              free(current_in);
-                           }
-                           else current_next = current_in->next;
-                     }
-                  else current_next = current_in->next;
-               }
-         }
-   }
-
+//1.checks if input of user has odd number of digits,       //
+//2.if the two cubes have not the same number of digits,   //
+//3.if one of cubes has a invalid digit(eg. 2,3,4,....),   //
+//4.i.e != 0 or 1
 int check_input(char* str1, char *str2)
    {
       if (strlen(str1) != strlen(str2))
@@ -900,13 +953,15 @@ int check_input(char* str1, char *str2)
       return 0 ;
       
    }
+
+//my_bitwise_and_or performs "and" or "or" operation depending on operation argument. // 
 char *my_bitwise_and_or(char* str1, char *str2, char* operation)
    {
       char *result ;
       result = (char*)calloc(strlen(str1)+1, sizeof(char));
    
-      // convert str1,str2 to int and perform bitwise AND operation, //
-      //append to result string.                                     //
+      //1.convert str1,str2 to int and perform bitwise AND operation,  //
+      //2.append to result string.                                     //
       if (strcmp(operation,"and") == 0)
          {
             for(int i = 0 ; i < strlen(str1); i++)
@@ -926,6 +981,12 @@ char *my_bitwise_and_or(char* str1, char *str2, char* operation)
 
       return result ; 
    }
+//1.and_bubes_list performs and operation between 2 list of cubes. //
+//2.     cube_list1 and cube_list2 = cube_list3.                   //
+//3.        |        |       |            |                        //
+//4.eg.  101010            111010      101010                      //
+//5.     111101            111111      111101                      //
+//6.     010111            101001      010111                      //
 
 void and_cubes_list(cubes_list* cubes_list1, cubes_list* cubes_list2, cubes_list** and_result)
    {
@@ -960,10 +1021,10 @@ void and_cubes_list(cubes_list* cubes_list1, cubes_list* cubes_list2, cubes_list
       absorb(and_result);
    }
 
-//shows the whole history of inputs, with the following manner:                                    //
-//history_get_history_state: Return a structure describing the current state of the input history. //
-//Return a NULL terminated array of HIST_ENTRY * which is the current input history.               //
-//Element 0 of this list is the beginning of time. If there is no history, return NULL.            //
+//1.shows the whole history of inputs, with the following manner:                                    //
+//2.history_get_history_state: Return a structure describing the current state of the input history. //
+//3.Return a NULL terminated array of HIST_ENTRY * which is the current input history.               //
+//4.Element 0 of this list is the beginning of time. If there is no history, return NULL.            //
 void show_history()
    {
       myhist = history_get_history_state ();
@@ -993,9 +1054,10 @@ int my_cmd(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
       for (i =  1 ; i <  objc ; i++)
          {
             //+3 : 2 bytes for char '\0' at strcat and 1 for space " " //
-            if(realloc(buffer, sizeof(objv[i])+3) == NULL){
-               perror("realloc fails!");
-            }
+            if (realloc(buffer, sizeof(objv[i])+3) == NULL)
+               {
+                  perror("realloc fails!");
+               }
             strcat(buffer ," ");
             strcat(buffer , Tcl_GetString(*(objv+i)));
          }

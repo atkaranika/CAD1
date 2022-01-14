@@ -1,7 +1,0 @@
-#create new branch
-git checkout newBranch
-#add a file to the new branch
-git add example.txt
-git commit
-#see all branches 
-git branch -a

@@ -4,13 +4,12 @@
 HIST_ENTRY **mylist;
 HISTORY_STATE *myhist; 
 
-int **graph_array;
- int max = 0;                      //is the dimension of graph array //
-                                    //global variable to know all functions //
-                                    //the size of graph array. //
-//variables
-//array of strings for auto-complete functionality
-//
+int **graph_array = NULL;
+ int max = 0;                       //1.is the dimension of graph array       //
+                                    //2.global variable to know all functions //
+                                    //3.the size of graph array.              //
+//variables//
+//array of strings for auto-complete functionality. //
 extern char *all_commands[];
 
 typedef struct function
@@ -49,14 +48,12 @@ int cube_cover(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 int sharp(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 int sharp_f(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
-/////////////////////////////////////////////////////////////
 
 
-////////////////////////////////////////////////////////////
-//because above functions must return TCL_OK or TCL_ERROR, //
-//create the following functions separately(auxiliary),    //
-//instead to implement this code inline                    //
-//so that they can then be used by more than one functions.//
+//1.because above functions must return TCL_OK or TCL_ERROR, //
+//2.create the following functions separately(auxiliary),    //
+//3.instead to implement this code inline                    //
+//4.so that they can then be used by more than one functions.//
 
 char *my_bitwise_and_or(char* str1, char *str2, char* operation);
 void and_cubes_list(cubes_list* cubes_list1, cubes_list* cubes_list2, cubes_list** and_result);
@@ -82,7 +79,7 @@ int draw_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 //takes the graph stored by read_graph function and creates a dot file with thedata. //
 int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
-void longest_path(int **dist);
+void identify_longest_path(int **dist);
 void add_queue_list(queue_list** queue, int node);
 int my_rlhandler(char* line) ;
 //the following function returns all matches of user input with thl commands and filenames, //
