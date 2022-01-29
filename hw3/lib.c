@@ -4,186 +4,34 @@
 
 #include <readline/readline.h>
 #include <string.h>
+#include <math.h>
 
 #define NUM_COMMAND 172
+int **graph_array = NULL;
+int size = 0;                                                                         
+int rat = 0;  
 
 char *all_commands[] = 
    {
-      "after", 
-      "appen", 
-      "apply",	
-      "argc",
-      "argv",
-      "argv0",
-      "array",
-      "auto_execok",
-      "auto_import",
-      "auto_load", 	
-      "auto_mkindex",
-      "auto_path",
-      "auto_qualify",
-      "auto_reset",
-      "bgerror",
-      "binary",
-      "break",
-      "catch",
-      "cd",
-      "chan",
-      "clock",
-      "close",
-      "concat",
-      "continue",
-      "coroutine",
-      "dde",
-      "dict", 	
-      "encoding",
-      "env" ,
-      "eof" ,
-      "error",
-      "errorInfo",
-      "load",
-      "re_syntax",
-      "tcl_startOfNextWord",
-      "errorCode",
-      "lmap",
-      "pwd",
-      "tcl_rcFileNam",
-      "eval",
-      "lrange",
-      "read",
-      "tcl_startOfPreviousWord",
-      "exec",
-      "lrepeat",
-      "refchan",
-      "tcl_traceCompile",
-      "exit",
-      "lreplace",
-      "regexp",
-      "tcl_traceExec",
-      "expr",
-      "lreverse",
-      "registry",
-      "tcl_version",
-      "fblocked",
-      "lsearch",
-      "regsub",
-      "tcl_wordBreakAfter",
-      "fconfigure",
-      "lset",
-      "rename",
-      "tcl_wordBreakBefore",
-      "fcopy",
-      "lsort", 
-      "return",
-      "tcl_wordchars",
-      "file",
-      "mathfunc",
-      "safe",
-      "tcltest",
-      "fileevent",
-      "mathop",
-      "scan",
-      "tell",
-      "filename",
-      "memory",
-      "seek",
-      "throw",
-      "flush",
-      "msgcat",
-      "self",
-      "time",
-      "for",
-      "my",
-      "set",
-      "timerate",
-      "foreach",
-      "namespace",
-      "socket",
-      "tm",
-      "format",
-      "next",
-      "source", 	
-      "trace",
-      "gets",
-      "nextto",
-      "split",
-      "transchan",
-      "glob",
-      "oo::class",
-      "string",
-      "try",
-      "global",
-      "oo::copy",
-      "subst",
-      "unknown",
-      "history",
-      "oo::define",
-      "switch",
-      "unload",
-      "http",
-      "oo::objdefine",
-      "tailcal",
-      "unset",
-      "if",
-      "oo::object", 	
-      "Tcl",
-      "update",
-      "incr", 	
-      "open ",	
-      "tcl::prefix", 	
-      "uplevel",
-      "info",
-      "package",
-      "tcl_endOfWord",
-      "upvar",
-      "interp",
-      "parray ",
-      "tcl_findLibrary",
-      "variable",
-      "join", 	
-      "pid", 	
-      "tcl_interactive", 	
-      "vwait",
-      "lappend", 	
-      "pkg::create",	
-      "tcl_library", 	
-      "while",
-      "lassign", 	
-      "pkg_mkIndex", 	
-      "tcl_nonwordchars", 	
-      "yield",
-      "lindex", 	
-      "platform ",	
-      "tcl_patchLevel", 	
-      "yieldto",
-      "linsert",
-      "platform::shell", 	
-      "tcl_pkgPath", 	
-      "zlib",
-      "list", 
-      "proc",	
-      "tcl_platform",
-      "llength",
-      "puts",
-      "cube_intersect",
-      "tcl_precision",
-      "supercube",
-      "distance", 
-      "cube_cover",
-      "sharp_f",
-      "sharp",
-      "quit",
-      "ls",
-      "less",
-      "off" , "read_graph" , "draw_graph", "write_graph", "graph_critical_path",
+      "after","appen", "apply",	"argc","argv","argv0","array","auto_execok","auto_import","auto_load", 	"auto_mkindex","auto_path","auto_qualify",
+      "auto_reset","bgerror","binary","break","catch","cd","chan","clock","close","concat","continue","coroutine","dde","dict", 	"encoding",
+      "env" ,"eof" ,"error","errorInfo","load","re_syntax","tcl_startOfNextWord","errorCode","lmap","pwd","tcl_rcFileNam","eval","lrange","read",
+      "tcl_startOfPreviousWord","exec","lrepeat","refchan","tcl_traceCompile","exit","lreplace","regexp","tcl_traceExec","expr","lreverse","registry",
+      "tcl_version","fblocked","lsearch","regsub","tcl_wordBreakAfter","fconfigure","lset","rename","tcl_wordBreakBefore","fcopy","lsort", "return",
+      "tcl_wordchars","file","mathfunc","safe","tcltest","fileevent","mathop","scan","tell","filename","oo::copy","subst","unknown","history",
+      "memory","seek","throw","flush","msgcat","self","time","for","my","set","timerate","foreach","namespace","socket","tm","format","next","source", 	
+      "trace","gets","nextto","split","transchan","glob","oo::class","string","try","global","oo::define""switch""unload""http","puts","cube_intersect",
+      "oo::objdefine","tailcal","unset","if","oo::object", 	"Tcl","update","incr","open ","tcl::prefix","uplevel","info","list","proc","tcl_platform","llength",
+      "package","tcl_endOfWord","upvar","interp","parray ","tcl_findLibrary","variable","join","pid","tcl_interactive","vwait","lappend","pkg::create","tcl_library", 	
+      "while","lassign","pkg_mkIndex","tcl_nonwordchars","yield","lindex","platform ","tcl_patchLevel","yieldto","linsert","platform::shell", "tcl_pkgPath","zlib",
+      "tcl_precision","supercube","distance", "cube_cover","sharp_f","sharp","quit","ls","less","off" , "read_graph" , "draw_graph", "write_graph", "graph_critical_path",
    };
 
-int MyExit(Tcl_Interp *interp)
+
+
+int MyExit()
    {
-      Tcl_DeleteInterp(interp); 
-      rl_clear_history();
-      Tcl_Finalize();
-      return 0;
+     
    }
 
 void init()
@@ -200,7 +48,6 @@ void init()
       Tcl_CreateObjCommand(interp, "cover_f",(Tcl_ObjCmdProc *)sharp, NULL, NULL);
       Tcl_CreateObjCommand(interp, "sharp_f",(Tcl_ObjCmdProc *)sharp_f, NULL, NULL);
       Tcl_CreateObjCommand(interp, "off",(Tcl_ObjCmdProc *)sharp_f, "off", NULL);
-
       Tcl_CreateObjCommand(interp, "read_graph",(Tcl_ObjCmdProc *)read_graph, "read_graph", NULL);
       Tcl_CreateObjCommand(interp, "draw_graph",(Tcl_ObjCmdProc *)draw_graph, "draw_graph", NULL);
       Tcl_CreateObjCommand(interp, "write_graph",(Tcl_ObjCmdProc *)write_graph, "write_graph", NULL);
@@ -209,6 +56,17 @@ void init()
       using_history();
    }
 
+//1.opens the file given by objv[1], in which there are 2 types of inputs: ni->nh w, RAT x //
+//2.In order to create the adjacency matrix(which is dinamicaly allocated) firstly reads   //
+//3.the entire file, and finds the max i(from all ni) which will be the dimension of the   //
+//4.matrix. Then rereads the file and for each record of the format ni->nj w, executes     //
+//5.graph_array[i][j] = w, and for record RAT x assigns to global variable rat the value x.//
+//6.         n0  n1 n2  .. .. .. nm                                                        //
+//7.      n0 -1 w01 w02 .. .. .. w0m   (if there is such a record in file)                 //
+//8.      n1 -1 ..  ..  .. .. .. ..                                                        //
+//9.      :                                                                                //     
+//10.     :                                                                                //     
+//11.     nm  -1 -1  -1 ..  .. .. -1                                                       //       
 int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
    {
       FILE* filePointer ;
@@ -220,37 +78,45 @@ int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
       int n_i, n_j ;                         //ni -> nj in input file. //
       int weight ;
 
+
       filePointer = fopen(Tcl_GetString(objv[1]), "r");
       if (filePointer == NULL)
          {
             printf("Error! Unable to open file. Try again\n");
             return TCL_OK;
          }
-      //to create the array i have to find its size so i find the number of nodes //
-      //to be used in dynamic memory allocation. //
-      max = 0 ;
+      //1.to create the array i have to find its size so i find the number of nodes //
+      //2.to be used in dynamic memory allocation.                                  //
+      size = 0 ;
       while (fgets(buffer, bufferLength, filePointer)) 
          {
             strcpy(line_buffer,buffer);
             ni = strtok(line_buffer," ");
-            if (atoi(ni+1) > max)
+            if (strcmp(ni,"RAT") == 0)
+            {
+               ni = strtok(NULL," ");
+               rat = atoi(ni);
+               continue;
+            }
+            if (atoi(ni+1) > size)
                {
-                  max =atoi(ni+1);
+                  size =atoi(ni+1);
                }
             ni = strtok(NULL," ");
+
             ni = strtok(NULL," ");
-            if (atoi(ni+1)  > max)
+            if (atoi(ni+1)  > size)
                {
-                  max = atoi(ni+1);
+                  size = atoi(ni+1);
                }
          }
       
-      max++ ;
-      graph_array = (int**)malloc(max*sizeof(int*));
-      for (int i = 0 ; i < max ; i++)
+      size++ ;
+      graph_array = (int**)malloc(size*sizeof(int*));
+      for (int i = 0 ; i < size ; i++)
          {
-            *(graph_array+i) = (int*)malloc(max*sizeof(int));
-            for (int j = 0 ; j < max ; j++)
+            *(graph_array+i) = (int*)malloc(size*sizeof(int));
+            for (int j = 0 ; j < size ; j++)
                {
                   graph_array[i][j] = -1;
                }
@@ -261,7 +127,11 @@ int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
       while (fgets(buffer, bufferLength, filePointer)) 
          {
             strcpy(line_buffer,buffer);
-            ni = strtok(line_buffer," ");    
+            ni = strtok(line_buffer," ");  
+            if (strcmp(ni,"RAT") == 0)
+               {
+                  continue;
+               }  
             n_i = atoi(ni+1);
             ni = strtok(NULL," ");
             ni = strtok(NULL," ");
@@ -273,12 +143,17 @@ int read_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
       fclose(filePointer);
       return TCL_OK ;
    }
+//1.In order to create the draw_graph.dot and display the produced png with critical path hightlighted  //
+//2.firstly we write in the file in the appropriate form the data of the graph_array and we call the    //
+//3.identify_longest_path to find which edges of the graph must be highlighted(color attr in label).    //
 
 int draw_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
    {
       FILE *fp;
       char buffer[50] = {0}; 
-      fp = fopen(Tcl_GetString(objv[1]), "w");
+      int *longest_path;
+      int *dist;
+      fp = fopen("draw_graph.dot", "w");
 
       if (graph_array == NULL)
          {
@@ -289,22 +164,43 @@ int draw_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
          {
             printf("Unable to open file. Try again!\n");
          }
+      
+      dist = (int*)malloc(size*sizeof(int));
+      identify_longest_path(&dist, &longest_path);
+
       fputs("digraph {\n", fp);
       fputs("node [fillcolor = \"lightgray\", fontsize = 10]", fp);
-      for (int i = 0 ; i < max ; i++)
+      for (int i = 0 ; i < size ; i++)
          {
-            for (int j = 0 ; j < max ; j++)
+            for (int j = 0 ; j < size ; j++)
                {
                   if (graph_array[i][j] != -1)
                      {
-                        sprintf(buffer, "\t %d -> %d [label = \" %d \"];\n", i, j, graph_array[i][j]);
+                        int k = 0 ;
+                        while(longest_path[k] != -1)
+                           {
+                              if (longest_path[k] == i && longest_path[k+1] == j)
+                                 {
+                                     sprintf(buffer, "\t %d -> %d [label = \" %d \", color = \"blue\"];\n", i, j, graph_array[i][j]);
+                                    break;
+                                 }
+                              k++;
+                           }
+                        if (longest_path[k] == -1)
+                           {
+                              sprintf(buffer, "\t %d -> %d [label = \" %d \"];\n", i, j, graph_array[i][j]);
+                           }
+                       
                         fputs(buffer, fp);
                      }
                }
          }
       fputs("}", fp);
       fclose(fp);
+      system("dot -Tpng draw_graph.dot -o outpout.png");
       system("xdg-open outpout.png");
+      free(longest_path);
+      free(dist);
       return TCL_OK;
    }
 int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
@@ -324,9 +220,9 @@ int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
          }
       fputs("digraph {\n", fp);
       fputs("node [fillcolor = \"lightgray\", fontsize = 10]", fp);
-      for (int i = 0 ; i < max ; i++)
+      for (int i = 0 ; i < size ; i++)
          {
-            for (int j = 0 ; j < max ; j++)
+            for (int j = 0 ; j < size ; j++)
                {
                   if (graph_array[i][j] != -1)
                      {
@@ -339,57 +235,74 @@ int write_graph(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
       fclose(fp);
       return TCL_OK;
    }
+
+//1.In order to print the critical path we call the identify_longest_path algorithm, and then we print the slacks //
+//2.with the following algorithm.                                                                                 //
+//3.Initially all the slacks are equal to inf, slacks of pos are rat - at(dist[i] from identify_longest_path)     //
+//4.a queue is kept in which a node is added when has informed from all its succ. about slack and it keeps the    //
+//5.worst. When a node is removed from the  queue, imforms all its pred. about slack. Hence, crossing the graph   //
+//6.backwards all nodes are informed                                                                              //
+
 int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
    {
       int *dist;
-      int max_dist = 0;
-      int *critical_path;
-      int slack[max];
-      int pred[max];
+      int size_dist = 0;
+      int slack[size];
+      int pred[size];
       int j;                 //iterator for crtitcal_path. //
       int length_critical_path = 0;
+      int col = 0;
+      int succ[size];
+      int *longest_path;
       queue_list *queue;
       queue_list *current;
    
-      dist = (int*)malloc(max*sizeof(int));
-      identify_longest_path(&dist);
+      dist = (int*)malloc(size*sizeof(int));
+      identify_longest_path(&dist, &longest_path);
 
+      printf("=====Critical path=======\n");
+      j = 0;
+      while(longest_path[j] != -1)
+         {
+            printf("node %d\n", longest_path[j]);
+            j++;
+         }
+
+      //print slack //
+      //1.start from the pos and backtrace //
       queue = (queue_list*)malloc(sizeof(queue_list));
       if (queue == NULL)
          {
             printf("Error! Memory not allocated\n");
+            free(longest_path);
+            free(queue);
             exit(0);
          }
       queue->prev = NULL;
       queue->next = NULL; 
       queue->node = -1;  
 
-      //add the nodes with max distance to the quque and critical_path. // 
-      critical_path = (int*)malloc(sizeof(int));
       j = 0;
-      for(int i = 0 ; i < max ; i++)
+      //Initially entered in queue only pos .//
+      //1.In order to see when the node i will enter the queue we keep information, //
+      //2.about how many successors informed him about slack.                       //
+      for(int i = 0 ; i < size ; i++)
          {
-            if (dist[i] == max_dist)
+            slack[i] = __INT_MAX__;
+            //find if node-i is a po. //
+            succ[i] = 0;
+            for(col = 0; col < size; col++)
                {
-                  slack[i] = 0;
-                  add_queue_list(&queue, i);
-                  if (j == 0)
+                  if (graph_array[i][col] != -1)
                      {
-                        critical_path[j] = i;
+                        succ[i]++ ;
                      }
-                  else 
-                     {
-                        if (realloc(critical_path,sizeof(int)) == NULL)
-                           { 
-                              perror("realloc fails!");
-                           }
-                        critical_path[j] = i;
-                     }
-                  j++;
+                
                }
-            else
+            if (succ[i] == 0)
                {
-                  slack[i] = max_dist;
+                  slack[i] = rat - dist[i];
+                  add_queue_list(&queue, i);
                }
          }
 
@@ -397,23 +310,21 @@ int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *
       while(current != NULL)
          {
             //for all predecessors of current. //
-            for(int row = 0 ; row < max ; row++)
+            for(int row = 0 ; row < size ; row++)
                {
                   if (graph_array[row][current->node] != -1)
                      {
-                        slack[row] = slack[current->node] + (dist[current->node] -  (dist[row] + graph_array[row][current->node]));
+                        //keep the worst slack. //
+                        if (slack[row] > slack[current->node] + (dist[current->node] - (dist[row] + graph_array[row][current->node])))
+                        {
+                            slack[row] = slack[current->node] + (dist[current->node] - (dist[row] + graph_array[row][current->node]));
+                        }
+                       succ[row]--;
                        
-                        if (slack[row] == 0)
+                        if (succ[row] == 0)
                            {
                               add_queue_list(&queue, row);
-                              if (realloc(critical_path,sizeof(int)) == NULL)
-                                 { 
-                                    perror("realloc fails!");
-                                 }
-                              length_critical_path+= graph_array[row][current->node];
-                              critical_path[j] = row;
-                              j++;
-                              break;
+                              continue;
                            }
                      }  
                }
@@ -427,34 +338,32 @@ int graph_critical_path(ClientData line, Tcl_Interp *interp, int objc, Tcl_Obj *
             free(current);
             current = queue->next;
          }
-
-      printf("Critical path\n");
-      //print critical_path. //
-      for(int i = j-1 ; i > 0 ; i--)
-         {
-            printf("%d  ", critical_path[i]);
-         }
-      printf("\n");
-      printf("Length of Critical path: %d\n", length_critical_path);
-
       printf("Slack of all nodes\n");
       //print critical_path. //
-      for(int i = 0; i < max ; i++)
+      for(int i = 0; i < size ; i++)
          {
             printf("slack %d: %d\n", i, slack[i]);
          }
 
-      //find which nodes have th maximum distance, and add them to the queue. //
+      //find which nodes have th sizeimum distance, and add them to the queue. //
+      free(longest_path);
+      free(dist);
+      free(queue);
       return TCL_OK;
    }
-void identify_longest_path(int **dist)
+
+//1.In order to identify longest path firstly we run topo-sort to find the node with max distance.     //
+//2.and we keep the previous of each node which gives the max distance, then we begin with the po with //
+//3.max dist and crossing backward the graph we add to the path each recorded prev[i]                  //
+void identify_longest_path(int **dist, int **longest_path)
    {
-      int pred[max];
+      int pred[size];
+      int prev[size];            //the previous of each node that gives it the greatest dist. //
+      int final_node;            //will be the node with the longest distance,to find the longest path. //
       queue_list* queue;
       queue_list* current;
       int* local_dist = *dist;
       
-       
       queue = (queue_list*)malloc(sizeof(queue_list));
       if (queue == NULL)
          {
@@ -464,41 +373,53 @@ void identify_longest_path(int **dist)
       queue->prev = NULL;
       queue->next = NULL;
       //initialize the list and insert the input nodes in list. //
-      for(int i = 0 ; i < max ; i++)
+      for(int i = 0 ; i < size ; i++)
          {
             local_dist[i] = 0;
             pred[i] = 0;
+            prev[i] = i;                  //1.Initally each node has previous itself         //
+                                          //2.so than the algorithm stops when it find a PI .//
+                                          //3.than it when prev[i] = i.                      //
+
             //count predecessors of node-i. //
-            for(int row = 0 ; row < max ; row++)
+            for(int row = 0 ; row < size ; row++)
                {
                   if (graph_array[row][i] != -1)
                      {
                         pred[i]++;
                      }  
                }
+            //Initially enter to the array only pi. //
             if (pred[i] == 0)
                {
                   add_queue_list(&queue, i);
                }
          }
-      //current will always be the head->next, because we always look at the first node of the list. //
+     
+     
+      //1.current will always be the head->next, because we always look at the first node of the list.   //
+      //2.then all its successors are informed of the new distance info and eventually keep the largest, //
+      //3.when a node receive an update from all of its pred, it enters to the queue, (if pred[i]) == 0. //
       current = queue->next;
+      final_node = current->node;     //Initialy final_node is one of the PIs. //
       while(current != NULL)
          {
             //for all sucessors of current. //
-            for(int col = 0 ; col < max ; col++)
+            for(int col = 0 ; col < size ; col++)
                {
                   if (graph_array[current->node][col] != -1)
                      {
                         if (local_dist[current->node]+graph_array[current->node][col] > local_dist[col])
                            {
                               local_dist[col] = local_dist[current->node]+graph_array[current->node][col];
+                              prev[col] = current->node;
                            }
-                           pred[col]--;
-                           if (pred[col] == 0)
-                              {
-                                 add_queue_list(&queue, col);
-                              }
+                        
+                        pred[col]--;
+                        if (pred[col] == 0)
+                           {
+                              add_queue_list(&queue, col);
+                           }
                      }
                }
             //free current(first node). //
@@ -510,8 +431,51 @@ void identify_longest_path(int **dist)
             free(current);
             current = queue->next;
          }
+      //find final_node and crossing back the graph, find the longest path. //
+      for(int i = 0; i < size; i++)
+         {
+            if (local_dist[final_node] <= local_dist[i])
+               {
+                  final_node = i;
+               }
+         }
+     
+      int i = final_node;
+      *longest_path =  (int*)malloc(sizeof(int));
+      (*longest_path)[0] = -1;
+      int j = 1 ;
+      while(prev[i] != i)
+         {   
+            *longest_path  = (int*)realloc( *longest_path ,sizeof(int)*(j+1)) ;
+            if (*longest_path == NULL)
+               {
+                  perror("realloc fails!");
+               }
+             (*longest_path)[j] = i;
+            i = prev[i];
+            j++;
+         }
+      *longest_path  = (int*)realloc( *longest_path ,sizeof(int)*(j+1)) ;
+      if (*longest_path == NULL)
+         {
+            perror("realloc fails!");
+         }
+       (*longest_path)[j] = prev[i];
+
+      reverse(*longest_path , j+1);
+      free(queue);
       return ; 
    }
+
+void reverse(int arr[], int n)
+{
+    for (int low = 0, high = n - 1; low < high; low++, high--)
+    {
+        int temp = arr[low];
+        arr[low] = arr[high];
+        arr[high] = temp;
+    }
+}
 
 void add_queue_list(queue_list** queue, int node)
    {
@@ -853,7 +817,7 @@ void my_sharp(char* str1, char* str2, cubes_list** sharp_result)
       int row_counter = 0 ; 
       row_of_result = (char*)malloc(strlen(str1)*sizeof(char)+1);
       
-      //1.the rows of the final array(sharp result) will be the maximum //
+      //1.the rows of the final array(sharp result) will be the sizeimum //
       //2.cube digit number/2                                           //
       for(int i = 0 ; i < strlen(str1)/2 ; i+=1)
          {  
